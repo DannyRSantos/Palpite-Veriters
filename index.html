@@ -1,4 +1,4 @@
-<DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
@@ -179,7 +179,7 @@ function render() {
   const app = document.getElementById('app');
   const s = state;
   if (s.screen === 'login') { app.innerHTML = renderLogin(); bindLogin(); return; }
-  if (s.screen === 'register') { app.innerHTML = renderRegister(); bindRegister(); return; }
+  if (s.screen === 'forgot') { app.innerHTML = renderForgot(); bindForgot(); return; }
   app.innerHTML = renderApp();
   bindApp();
 }
@@ -201,16 +201,45 @@ function renderLogin() {
       </div>
       <div style="background:#fff;border-radius:0 0 16px 16px;padding:24px 20px;">
         ${msgDiv()}
-        <div class="field"><label>E-mail</label><input id="l-email" type="email" placeholder="seu@verity.com"/></div>
+        <div class="field"><label>E-mail</label><input id="l-email" type="email" placeholder="seu@verity.com" value="${state.lastEmail || ''}"/></div>
         <div class="field"><label>Senha</label><input id="l-pass" type="password" placeholder="••••••"/></div>
         <button class="btn-primary" id="btn-login" style="margin-bottom:8px;">Entrar</button>
-        <button class="btn-secondary" id="btn-go-register">Criar conta</button>
+        <button class="btn-secondary" id="btn-go-register" style="margin-bottom:8px;">Criar conta</button>
+        <div style="text-align:center;">
+          <button id="btn-go-forgot" style="background:none;border:none;color:var(--brand);font-size:13px;cursor:pointer;text-decoration:underline;">Esqueci minha senha</button>
+        </div>
       </div>
     </div>
   </div>`;
 }
 
-function renderRegister() {
+function renderForgot() {
+  return `
+  <div style="max-width:380px;margin:2rem auto;">
+    <div style="border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(28,78,245,0.10);">
+      <div class="banner" style="text-align:center;padding:28px 24px 32px;">
+        ${verity(28)}<br>
+        <div style="font-size:18px;font-weight:800;color:#fff;margin-top:6px;">Redefinir senha</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.75);margin-top:4px;">Palpite Veriters_</div>
+      </div>
+      <div style="background:#fff;border-radius:0 0 16px 16px;padding:24px 20px;">
+        ${msgDiv()}
+        <div id="forgot-step1">
+          <div class="field"><label>E-mail cadastrado</label><input id="f-email" type="email" placeholder="seu@verity.com"/></div>
+          <button class="btn-primary" id="btn-check-email" style="margin-bottom:8px;">Continuar</button>
+          <button class="btn-secondary" id="btn-back-login">Voltar ao login</button>
+        </div>
+        <div id="forgot-step2" style="display:none;">
+          <div class="field"><label>Nova senha</label><input id="f-pass" type="password" placeholder="••••••"/></div>
+          <div class="field"><label>Confirmar nova senha</label><input id="f-pass2" type="password" placeholder="••••••"/></div>
+          <button class="btn-primary" id="btn-reset-pass" style="margin-bottom:8px;">Salvar nova senha</button>
+          <button class="btn-secondary" id="btn-back-login2">Voltar ao login</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
   return `
   <div style="max-width:380px;margin:2rem auto;">
     <div style="border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(28,78,245,0.10);">
@@ -382,9 +411,11 @@ function renderAdmin() {
 // Bind events
 function bindLogin() {
   document.getElementById('btn-go-register').onclick = () => setState({ screen: 'register' });
+  document.getElementById('btn-go-forgot').onclick = () => setState({ screen: 'forgot' });
   document.getElementById('btn-login').onclick = async () => {
     const email = document.getElementById('l-email').value.trim();
     const pass = document.getElementById('l-pass').value;
+    setState({ lastEmail: email });
     if (email === ADMIN_EMAIL && pass === 'verity2026') {
       const [guesses, results, users] = await Promise.all([dbGetGuesses(), dbGetResults(), dbGetUsers()]);
       setState({ screen: 'app', user: { name: 'Dani (Admin)', email: ADMIN_EMAIL }, guesses, results, users, tab: 'jogos' });
@@ -394,6 +425,30 @@ function bindLogin() {
     if (!data) { flash('E-mail ou senha incorretos.', 'danger'); return; }
     const [guesses, results, users] = await Promise.all([dbGetGuesses(), dbGetResults(), dbGetUsers()]);
     setState({ screen: 'app', user: { name: data.name, email: data.email }, guesses, results, users, tab: 'jogos' });
+  };
+}
+
+function bindForgot() {
+  document.getElementById('btn-back-login').onclick = () => setState({ screen: 'login' });
+  document.getElementById('btn-back-login2').onclick = () => setState({ screen: 'login' });
+  document.getElementById('btn-check-email').onclick = async () => {
+    const email = document.getElementById('f-email').value.trim();
+    if (!email) { flash('Informe o e-mail.', 'danger'); return; }
+    const { data } = await sb.from('users').select('email').eq('email', email).single();
+    if (!data) { flash('E-mail não encontrado.', 'danger'); return; }
+    document.getElementById('forgot-step1').style.display = 'none';
+    document.getElementById('forgot-step2').style.display = 'block';
+    document.getElementById('btn-reset-pass').dataset.email = email;
+  };
+  document.getElementById('btn-reset-pass').onclick = async (e) => {
+    const email = e.target.dataset.email;
+    const pass = document.getElementById('f-pass').value;
+    const pass2 = document.getElementById('f-pass2').value;
+    if (!pass) { flash('Informe a nova senha.', 'danger'); return; }
+    if (pass !== pass2) { flash('As senhas não coincidem.', 'danger'); return; }
+    await sb.from('users').update({ pass }).eq('email', email);
+    flash('Senha atualizada! Faça login.');
+    setTimeout(() => setState({ screen: 'login' }), 1500);
   };
 }
 
