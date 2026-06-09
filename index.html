@@ -4,7 +4,21 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Palpite Veriters_</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+    // Carrega Supabase dinamicamente com fallback
+    (function() {
+      var s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+      s.onload = function() { window._supabaseReady = true; };
+      s.onerror = function() {
+        var s2 = document.createElement('script');
+        s2.src = 'https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js';
+        s2.onload = function() { window._supabaseReady = true; };
+        document.head.appendChild(s2);
+      };
+      document.head.appendChild(s);
+    })();
+  </script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f3f4f6; min-height: 100vh; color: #111; }
@@ -561,7 +575,14 @@ function bindApp() {
 }
 
 // Init
-render();
+window.onerror = function(msg, src, line) {
+  document.getElementById('app').innerHTML = `<div style="padding:2rem;color:red;font-family:monospace;font-size:13px;">Erro JS: ${msg}<br>Linha: ${line}</div>`;
+};
+if (typeof supabase === 'undefined') {
+  document.getElementById('app').innerHTML = `<div style="padding:2rem;color:red;font-family:sans-serif;">Erro: biblioteca Supabase não carregou. Verifique sua conexão.</div>`;
+} else {
+  render();
+}
 </script>
 </body>
 </html>
